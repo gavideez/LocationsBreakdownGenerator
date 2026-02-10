@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineSchedule - Production Breakdown</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons (Lucide via generic script or just use SVG directly, I'll use Phosphor Icons via CDN for simplicity) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Firebase SDKs (Compat version for easier standalone use) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header id="main-header" class="hidden">
+        <div class="logo">
+            <h1>CineSchedule</h1>
+        </div>
+        <div class="user-profile" id="user-profile">
+            <span id="user-name">Loading...</span>
+            <img id="user-avatar" src="" alt="Profile" class="user-avatar">
+            <button id="logout-btn" class="btn btn-secondary"><i class="ph ph-sign-out"></i> Logout</button>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Authentication Section -->
+        <section id="auth-container">
+            <div class="glass-card text-center" style="max-width: 400px; width: 100%; padding: 3rem;">
+                <div style="margin-bottom: 2rem;">
+                    <i class="ph ph-film-strip" style="font-size: 4rem; color: var(--primary-color);"></i>
+                </div>
+                <h2 style="margin-bottom: 1rem; font-size: 2rem;">Welcome Back</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Sign in to your production workspace</p>
+
+                <div class="form-group" style="text-align: left;">
+                    <label for="username-input">Username</label>
+                    <input type="text" id="username-input" placeholder="Enter your username"
+                        style="margin-bottom: 1rem;">
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label for="password-input">Password</label>
+                    <input type="password" id="password-input" placeholder="********" style="margin-bottom: 1rem;">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button id="login-username-btn" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                        <i class="ph ph-sign-in"></i> Sign In
+                    </button>
+                    <button id="register-btn" class="btn btn-secondary" style="flex: 1; justify-content: center;">
+                        <i class="ph ph-user-plus"></i> Register
+                    </button>
+                </div>
+
+
+                <p id="auth-error" style="color: var(--danger); margin-top: 1rem; font-size: 0.875rem;" class="hidden">
+                </p>
+            </div>
+        </section>
+
+        <!-- Main Application Interface -->
+        <section id="app-interface" class="hidden">
+
+            <!-- Sidebar: Input Form -->
+            <aside class="sidebar glass-card">
+                <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="ph ph-plus-circle"></i> Add New Scene
+                </h3>
+
+                <form id="scene-form">
+                    <div class="form-group">
+                        <label for="scene-no">Scene No.</label>
+                        <input type="number" id="scene-no" required placeholder="e.g. 1" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location">Location (Sinhala/English)</label>
+                        <input type="text" id="location" required list="location-suggestions"
+                            placeholder="Start typing location..." autocomplete="off">
+                        <datalist id="location-suggestions"></datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="day-night">Time</label>
+                        <select id="day-night" required>
+                            <option value="Day">Day</option>
+                            <option value="Night">Night</option>
+                            <option value="Morning">Morning</option>
+                            <option value="Evening">Evening</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="page-count">Page Count</label>
+                        <input type="number" id="page-count" placeholder="e.g. 2" min="0" step="0.125">
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Number of script pages</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="3" placeholder="Brief scene description..."
+                            style="resize: vertical;"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vehicles">Vehicles</label>
+                        <input type="text" id="vehicles" placeholder="e.g. Car, Motorcycle" list="vehicles-suggestions">
+                        <datalist id="vehicles-suggestions"></datalist>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Comma-separated list</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cast (Max 10)</label>
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <input type="text" id="cast-input" placeholder="Character Name" list="cast-suggestions">
+                            <datalist id="cast-suggestions"></datalist>
+                            <button type="button" id="add-cast-btn" class="btn btn-secondary">Add</button>
+                        </div>
+                        <div id="cast-list"
+                            style="min-height: 2rem; padding: 0.5rem; border: 1px dashed var(--glass-border); border-radius: 0.5rem;">
+                            <!-- Tags will appear here -->
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Click 'Add' or press Enter</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="ph ph-check"></i> Save Scene
+                    </button>
+                </form>
+
+                <div style="margin-top: 2rem;">
+                    <div class="stat-card">
+                        <i class="ph ph-film-script" style="font-size: 2rem; color: var(--success);"></i>
+                        <div>
+                            <div class="stat-value" id="total-scenes">0</div>
+                            <div class="stat-label">Total Scenes</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="ph ph-map-pin" style="font-size: 2rem; color: #f59e0b;"></i>
+                        <div>
+                            <div class="stat-value" id="total-locations">0</div>
+                            <div class="stat-label">Locations</div>
+                        </div>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- Main Content: Tables & Views -->
+            <div class="main-content">
+
+                <!-- Tabs -->
+                <div
+                    style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+                    <button class="btn btn-secondary active" id="tab-master"
+                        style="border-bottom: 2px solid var(--primary-color); border-radius: 0;">Master
+                        Schedule</button>
+                    <button class="btn btn-secondary" id="tab-breakdown"
+                        style="border: none; border-radius: 0;">Location Breakdown</button>
+                </div>
+
+                <!-- Master Schedule View -->
+                <div id="view-master">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3>All Scenes</h3>
+                        <button id="download-master-btn" class="btn btn-secondary">
+                            <i class="ph ph-file-pdf"></i> Download PDF
+                        </button>
+                    </div>
+
+                    <div class="table-container glass-card" id="master-schedule-container">
+                        <table id="master-table">
+                            <thead>
+                                <tr>
+                                    <th width="6%">Scene #</th>
+                                    <th width="15%">Location</th>
+                                    <th width="8%">Time</th>
+                                    <th width="15%">Cast</th>
+                                    <th width="20%">Description</th>
+                                    <th width="12%">Vehicles</th>
+                                    <th width="6%">Pages</th>
+                                    <th width="5%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-table-body">
+                                <!-- Rows will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Location Breakdown View -->
+                <div id="view-breakdown" class="hidden">
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+                        <select id="breakdown-location-select" style="max-width: 300px; flex-grow: 1;">
+                            <option value="">Select a Location...</option>
+                        </select>
+                        <button id="download-breakdown-btn" class="btn btn-secondary" disabled>
+                            <i class="ph ph-file-pdf"></i> Download Single
+                        </button>
+                        <button id="download-all-breakdowns-btn" class="btn btn-primary">
+                            <i class="ph ph-files"></i> Download All Locations
+                        </button>
+                    </div>
+
+                    <div id="breakdown-content" class="hidden">
+                        <div class="glass-card" style="padding: 1.5rem; margin-bottom: 1rem;" id="breakdown-print-area">
+                            <h2 id="breakdown-title" style="margin-bottom: 1rem; color: var(--primary-color);">Location
+                                Name</h2>
+                            <div class="table-container" style="border: none;">
+                                <table id="breakdown-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="background: rgba(0,0,0,0.2);">Scene #</th>
+                                            <th style="background: rgba(0,0,0,0.2);">Time</th>
+                                            <th style="background: rgba(0,0,0,0.2);">Cast</th>
+                                            <th style="background: rgba(0,0,0,0.2);">Description</th>
+                                            <th style="background: rgba(0,0,0,0.2);">Vehicles</th>
+                                            <th style="background: rgba(0,0,0,0.2);">Pages</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="breakdown-table-body">
+                                        <!-- Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- App Logic -->
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
