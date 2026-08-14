@@ -114,7 +114,23 @@ const AuthService = {
         sessionStorage.removeItem('currentUser');
     }
 };
+// Helper to sort scene numbers naturally (e.g., 1, 1A, 1B, 2 instead of 1, 10, 1A, 2)
+function compareSceneNumbers(a, b) {
+    const parseSceneNo = (val) => {
+        const str = String(val).trim();
+        const match = str.match(/^(\d+)(.*)$/);
+        if (!match) return [0, str];
+        return [parseInt(match[1], 10), match[2].toUpperCase()];
+    };
 
+    const [numA, alphaA] = parseSceneNo(a);
+    const [numB, alphaB] = parseSceneNo(b);
+
+    if (numA !== numB) {
+        return numA - numB;
+    }
+    return alphaA.localeCompare(alphaB);
+}
 // ==========================================
 // Data Service
 // ==========================================
