@@ -374,7 +374,7 @@ function renderCastTags() {
 
 elements.sceneForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const sceneNo = parseInt(elements.sceneNoInput.value);
+    const sceneNo = elements.sceneNoInput.value;
     const location = elements.locationInput.value.trim();
     const dayNight = elements.dayNightInput.value;
     const pageCount = parseFloat(elements.pageCountInput.value) || 0;
