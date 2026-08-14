@@ -151,7 +151,10 @@ const DataService = {
         const scenes = DataService.getScenes(username);
         scene.id = 'scene_' + Date.now();
         scenes.push(scene);
-        scenes.sort((a, b) => a.sceneNo - b.sceneNo);
+        
+        // Use the natural/alphanumeric comparator here
+        scenes.sort((a, b) => compareSceneNumbers(a.sceneNo, b.sceneNo));
+        
         DataService.saveScenes(username, scenes);
         return scenes;
     },
